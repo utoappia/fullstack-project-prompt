@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx electron *)",
+      "Bash(npx electron-forge *)",
+      "Bash(npm run package *)",
+      "Bash(npm run make *)",
+      "Bash(npx @electron/rebuild *)",
+      "Bash(npx electron-builder *)"
+    ]
+  }
+}

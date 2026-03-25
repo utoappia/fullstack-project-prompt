@@ -1,0 +1,34 @@
+{
+  "name": "fullstack-project-prompt",
+  "version": "2.0.0",
+  "description": "Curated coding prompts for any AI coding agent — supports React Native, Electron, AWS Lambda, Vercel, RevenueCat, WorkOS, and Apple platform guidelines. Works with Claude Code (skill), Cursor, Windsurf, Copilot, and any agent that reads markdown.",
+  "type": "module",
+  "bin": {
+    "fullstack-project-prompt": "./bin/setup.mjs"
+  },
+  "files": [
+    ".claude/",
+    "bin/",
+    "AGENTS.md",
+    "SETUP.md",
+    "UPDATE_INSTRUCTIONS.md"
+  ],
+  "keywords": [
+    "react-native",
+    "expo",
+    "electron",
+    "claude-code",
+    "cursor",
+    "windsurf",
+    "copilot",
+    "ai-coding-agent",
+    "prompts",
+    "conventions",
+    "developer-tools",
+    "aws-lambda",
+    "vercel",
+    "revenuecat",
+    "workos"
+  ],
+  "license": "MIT"
+}

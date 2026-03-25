@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Bash(npx tsc *)",
+      "Bash(cat /tmp/rn-logs.txt)",
+      "Bash(cat /tmp/android-errors.txt)",
+      "Bash(tail *)",
+      "Bash(git *)"
+    ]
+  }
+}
