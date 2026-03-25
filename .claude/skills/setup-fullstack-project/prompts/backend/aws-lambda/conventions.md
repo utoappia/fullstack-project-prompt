@@ -34,6 +34,37 @@
 - TypeScript SDK available. Functions suspend during waits without incurring compute charges.
 - Alternative: **AWS Step Functions** for visual workflow design and orchestration across 220+ AWS services. Use Step Functions when you need service integrations beyond Lambda; use Durable Functions when the workflow is code-centric.
 
+### Local development
+
+Run the backend locally without deploying to AWS:
+
+```bash
+cd backend
+
+# Build and start (uses .env.dev)
+npm run start:api
+
+# Or with hot-reload (restarts on file changes)
+npm run start:api:watch
+```
+
+The local server runs at `http://localhost:3001` with these endpoints:
+
+| Method | Path | Body | Purpose |
+|---|---|---|---|
+| POST | `/api` | `{ "action": "getUser", "params": {...}, "sessionToken": "..." }` | Call API handlers |
+| POST | `/script` | `{ "script": "cleanupOldRecords", "payload": {...} }` | Run script handlers |
+| GET | `/health` | — | Health check, lists available handlers |
+
+CORS is enabled for all origins in local mode. The server uses the same handler registry as the Lambda function — any API handler you add is automatically available locally.
+
+**Example request:**
+```bash
+curl -X POST http://localhost:3001/api \
+  -H 'Content-Type: application/json' \
+  -d '{"action": "getUser", "params": {"userId": "123"}, "sessionToken": "tok_abc"}'
+```
+
 ### Node.js runtime notes
 - Keep-alive for HTTP connections is enabled by default in SDK v3. TCP connections are reused across invocations.
 - Node.js 20+ does NOT auto-load AWS CA certificates. If connecting to RDS with SSL verification, set `NODE_EXTRA_CA_CERTS=/var/runtime/ca-cert.pem` in Lambda env vars. Or bundle only the needed cert with your deployment.

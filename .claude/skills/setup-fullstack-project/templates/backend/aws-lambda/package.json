@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "start:api": "ENV=dev npm run build && node dist/src/local-server.js",
+    "start:api:watch": "ENV=dev npx tsx watch src/local-server.ts",
     "build": "rm -rf dist && npx tsc --project tsconfig.build.json",
     "typecheck": "npx tsc --noEmit",
     "push_db_schema": "npm run build && npx drizzle-kit push",
@@ -22,6 +24,7 @@
     "@types/pg": "^8.11.0",
     "drizzle-kit": "^0.28.0",
     "esbuild": "^0.24.0",
-    "dotenv": "^16.4.0"
+    "dotenv": "^16.4.0",
+    "tsx": "^4.0.0"
   }
 }
