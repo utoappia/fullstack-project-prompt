@@ -174,31 +174,75 @@ The final structure should be:
 - If `.claude/settings.json` already exists, read it. Merge your `permissions.allow` entries into the existing array (preserve what's already there, add new entries, deduplicate).
 - If it does not exist, create `.claude/` directory and write the file.
 
-## Step 5: Add package scripts (if log piping enabled)
+## Step 5: Add convenience scripts to root package.json
 
-If the user chose log piping AND `package.json` exists, read it and add these scripts (don't overwrite existing scripts with the same name).
+If `package.json` exists, add scripts to start all parts of the stack easily. Don't overwrite existing scripts with the same name.
 
-If `package.json` does not exist, skip this step and note in the summary: "Log piping scripts were not added because package.json doesn't exist yet. Run `npx create-expo-app` or `npx @react-native-community/cli init` first, then re-run `/setup-fullstack-project` to add them."
+If `package.json` does not exist, skip this step and note in the summary.
 
-Scripts to add:
-
-For **Expo**:
+**Always add (if backend was selected):**
 ```json
 {
+  "start:api": "cd backend && npm run start:api",
+  "start:api:watch": "cd backend && npm run start:api:watch"
+}
+```
+
+**If Expo:**
+```json
+{
+  "start:expo": "npx expo start",
+  "start:expo:ios": "npx expo start --ios",
+  "start:expo:android": "npx expo start --android",
+  "start:expo:web": "npx expo start --web",
   "dev:ios": "npx expo start --ios 2>&1 | tee /tmp/rn-logs.txt",
   "dev:android": "npx expo start --android 2>&1 | tee /tmp/rn-logs.txt",
   "dev:android:logs": "adb logcat *:E 2>&1 | tee /tmp/android-errors.txt"
 }
 ```
 
-For **Bare React Native**:
+**If Bare React Native:**
 ```json
 {
+  "start:rn": "npx react-native start",
+  "start:rn:ios": "npx react-native run-ios",
+  "start:rn:android": "npx react-native run-android",
   "dev:ios": "npx react-native start 2>&1 | tee /tmp/rn-logs.txt",
   "dev:android": "npx react-native start 2>&1 | tee /tmp/rn-logs.txt",
   "dev:android:logs": "adb logcat *:E 2>&1 | tee /tmp/android-errors.txt"
 }
 ```
+
+**If Electron:**
+```json
+{
+  "start:electron": "npx electron .",
+  "start:electron:dev": "npx electron . --inspect"
+}
+```
+
+If the project has Electron Forge configured, use instead:
+```json
+{
+  "start:electron": "npx electron-forge start",
+  "start:electron:dev": "npx electron-forge start -- --inspect"
+}
+```
+
+**If multiple frontends exist (e.g., Expo + Electron in the same repo):**
+
+Add a combined `start:all` script that runs the API server and the selected frontend concurrently. If `concurrently` is not installed, suggest installing it:
+
+```json
+{
+  "start:all": "npx concurrently \"npm run start:api\" \"npm run start:expo\"",
+  "start:all:electron": "npx concurrently \"npm run start:api\" \"npm run start:electron\""
+}
+```
+
+Tell the user they can customize which frontend `start:all` runs.
+
+**Log piping scripts** (`dev:ios`, `dev:android`, `dev:android:logs`) pipe Metro/logcat output to `/tmp/rn-logs.txt` and `/tmp/android-errors.txt` so the coding agent can read logs directly from files. Only add these if the user chose log piping.
 
 ## Step 6: Scaffold backend (if selected)
 
@@ -324,11 +368,19 @@ Setup complete:
   .github/copilot-instructions.md created/updated (GitHub Copilot)
   CONVENTIONS.md .............. created/updated (universal)
   .claude/settings.json ....... created/updated
-  package.json scripts ........ added (dev:ios, dev:android, dev:android:logs)
+  package.json scripts ........ added
   backend/ .................... scaffolded (AWS Lambda)
   Documentation/ .............. scaffolded with initial structure
   references/MANIFEST.md ...... created (references folder gitignored)
   code_review/ ................ created (gitignored, for review reports)
+
+Available commands:
+  npm run start:api          Start backend server (localhost:3001)
+  npm run start:api:watch    Start backend with hot-reload
+  npm run start:expo         Start Expo dev server
+  npm run start:expo:ios     Start Expo on iOS simulator
+  npm run start:electron     Start Electron app
+  npm run start:all          Start backend + frontend concurrently
 
 Next steps:
   - Review CLAUDE.md and add project-specific notes at the bottom
