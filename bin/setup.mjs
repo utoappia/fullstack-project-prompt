@@ -174,39 +174,46 @@ async function main() {
     console.log('This will generate instruction files for your AI coding agent');
     console.log('and scaffold project management folders.\n');
 
+    // Ensure package.json exists
+    const pkgPath = join(cwd, 'package.json');
+    if (!await exists(pkgPath)) {
+      console.log('No package.json found. Creating one...\n');
+      const { execSync } = await import('node:child_process');
+      execSync('npm init -y', { cwd, stdio: 'pipe' });
+    }
+
     // Detect platform
     let detectedPlatform = null;
-    const pkgPath = join(cwd, 'package.json');
-    if (await exists(pkgPath)) {
-      const pkg = JSON.parse(await readFile(pkgPath, 'utf-8'));
-      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-      if (deps.expo) detectedPlatform = 'expo';
-      else if (deps['react-native']) detectedPlatform = 'bare';
-      else if (deps.electron) detectedPlatform = 'electron';
-    }
-    if (detectedPlatform) console.log(`Detected: ${detectedPlatform} project`);
+    const pkg = JSON.parse(await readFile(pkgPath, 'utf-8'));
+    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+    if (deps.expo) detectedPlatform = 'expo';
+    else if (deps['react-native']) detectedPlatform = 'bare';
+    else if (deps.electron) detectedPlatform = 'electron';
+    else if (deps.next) detectedPlatform = 'nextjs';
+
+    if (detectedPlatform) console.log(`Detected: ${detectedPlatform} project\n`);
 
     // Ask questions
-    const platformIdx = await ask(rl, 'Which platform?', [
-      `Expo${detectedPlatform === 'expo' ? ' (detected)' : ''}`,
-      `Bare React Native${detectedPlatform === 'bare' ? ' (detected)' : ''}`,
-      `Electron${detectedPlatform === 'electron' ? ' (detected)' : ''}`,
-      'Other / None',
+    const platformIdx = await ask(rl, 'Which platform will you build?', [
+      `Expo (React Native)${detectedPlatform === 'expo' ? ' — detected' : ''}`,
+      `Bare React Native${detectedPlatform === 'bare' ? ' — detected' : ''}`,
+      `Electron (desktop)${detectedPlatform === 'electron' ? ' — detected' : ''}`,
+      'Other / Not sure yet',
     ]);
     const platform = ['expo', 'bare', 'electron', 'other'][platformIdx];
 
-    const backendIdx = await ask(rl, 'Backend?', ['AWS Lambda', 'Vercel', 'None']);
+    const backendIdx = await ask(rl, 'Backend?', ['AWS Lambda', 'Vercel', 'None / Later']);
     const backend = ['lambda', 'vercel', null][backendIdx];
 
-    const rcIdx = await ask(rl, 'In-app purchases (RevenueCat)?', ['Yes', 'No']);
+    const rcIdx = await ask(rl, 'In-app purchases via RevenueCat?', ['Yes', 'No']);
     const revenuecat = rcIdx === 0;
 
-    const workosIdx = await ask(rl, 'Authentication (WorkOS)?', ['Yes', 'No']);
+    const workosIdx = await ask(rl, 'Authentication via WorkOS?', ['Yes', 'No']);
     const workos = workosIdx === 0;
 
     let agentChoice = agentFlag;
     if (!agentChoice) {
-      const agentIdx = await ask(rl, 'Which AI coding agent?', [
+      const agentIdx = await ask(rl, 'Which AI coding agent are you using?', [
         'Cursor', 'Windsurf', 'GitHub Copilot', 'Claude Code', 'All of the above', 'None (just scaffold folders)',
       ]);
       agentChoice = ['cursor', 'windsurf', 'copilot', 'claude', 'all', 'none'][agentIdx];
@@ -246,11 +253,34 @@ async function main() {
     console.log('  references/MANIFEST.md ...... created');
     console.log('  code_review/ ................ created');
     console.log('  .gitignore .................. updated');
-    console.log('\nNext steps:');
-    console.log('  - Review the generated instruction file for your agent');
-    console.log('  - Add project-specific notes at the bottom');
-    console.log('  - Start a new session in your AI coding agent to load the conventions');
-    console.log('');
+
+    console.log('\n📋 What to do next:\n');
+    console.log('  1. Open this project in your AI coding agent');
+    console.log('     (it will read the generated instruction file automatically)\n');
+
+    if (!detectedPlatform && platform !== 'other') {
+      console.log('  2. Ask the agent to create your project. For example:');
+      if (platform === 'expo') console.log('     "Create a new Expo app in this directory"');
+      if (platform === 'bare') console.log('     "Create a new React Native app in this directory"');
+      if (platform === 'electron') console.log('     "Create a new Electron app in this directory"');
+      console.log('');
+      console.log('     The agent knows to use the framework\'s official CLI and will');
+      console.log('     configure start scripts, install dependencies, and update docs.\n');
+    }
+
+    if (backend) {
+      if (platform !== 'other' && !detectedPlatform) {
+        console.log('  3. After the project is created, ask the agent to set up the backend:');
+      } else {
+        console.log('  2. Ask the agent to set up the backend:');
+      }
+      if (backend === 'lambda') console.log('     "Set up an AWS Lambda backend"');
+      if (backend === 'vercel') console.log('     "Set up Vercel serverless functions"');
+      console.log('');
+    }
+
+    console.log('  The agent has access to conventions and API references for everything');
+    console.log('  you selected. Just tell it what to build!\n');
   } finally {
     rl.close();
   }

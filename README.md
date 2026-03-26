@@ -22,20 +22,24 @@ The prompts include code examples, configuration snippets, comparison tables, er
 ## Install
 
 ```bash
+mkdir my-project && cd my-project
+npm init -y
 npm install --save-dev github:utoappia/fullstack-project-prompt
-```
-
-Then run the setup wizard:
-
-```bash
 npx fullstack-project-prompt
 ```
 
-The interactive setup asks about your platform, backend, and integrations, then generates instruction files for your AI agent and scaffolds project management folders.
+The interactive wizard asks what you're building, then:
+1. Generates instruction files for your AI agent (`.cursorrules`, `CLAUDE.md`, etc.)
+2. Scaffolds `Documentation/`, `references/`, `code_review/` folders
+3. Tells you what to ask your agent next
 
-Start a new session in your AI coding agent and it will follow the conventions.
+Then open the project in your AI coding agent and tell it what to build:
 
-**Claude Code users** can also invoke the skill directly after installing:
+> "Create an Expo app with a Lambda backend and RevenueCat subscriptions"
+
+The agent reads the generated instruction file, follows the conventions, and knows the APIs — it will scaffold the project, configure start scripts, and set up everything.
+
+**Claude Code users** can also invoke the skill directly:
 ```
 /setup-fullstack-project
 ```
