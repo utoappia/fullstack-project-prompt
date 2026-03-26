@@ -21,19 +21,7 @@ The prompts include code examples, configuration snippets, comparison tables, er
 
 ## Install
 
-### New project (empty folder)
-
 ```bash
-mkdir my-project && cd my-project
-npm init -y
-npm install --save-dev github:utoappia/fullstack-project-prompt
-npx fullstack-project-prompt
-```
-
-### Existing project
-
-```bash
-cd my-project
 npm install --save-dev github:utoappia/fullstack-project-prompt
 npx fullstack-project-prompt
 ```

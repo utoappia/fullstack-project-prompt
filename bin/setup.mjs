@@ -230,12 +230,7 @@ async function main() {
   try {
     console.log('\n📦 fullstack-project-prompt setup\n');
 
-    // Ensure package.json exists
     const pkgPath = join(cwd, 'package.json');
-    if (!await exists(pkgPath)) {
-      const { execSync } = await import('node:child_process');
-      execSync('npm init -y', { cwd, stdio: 'pipe' });
-    }
 
     // Ask what the user wants to build
     console.log('Describe what you want to build (1-2 sentences).');

@@ -3,7 +3,7 @@
 ## Quick setup (recommended)
 
 ```bash
-npm install --save-dev github:utoappia/fullstack-project-prompt
+npm install --save-dev github:utoappia/fullstack-project-prompt   # works in empty folders too
 npx fullstack-project-prompt
 ```
 
