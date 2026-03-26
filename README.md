@@ -28,16 +28,17 @@ npm install --save-dev github:utoappia/fullstack-project-prompt
 npx fullstack-project-prompt
 ```
 
-The interactive wizard asks what you're building, then:
-1. Generates instruction files for your AI agent (`.cursorrules`, `CLAUDE.md`, etc.)
-2. Scaffolds `Documentation/`, `references/`, `code_review/` folders
-3. Tells you what to ask your agent next
+The setup asks one question: **"What are you building?"**
 
-Then open the project in your AI coding agent and tell it what to build:
+Describe your project in plain language:
+- *"A mobile app with Expo, Lambda backend, and subscriptions"*
+- *"An Electron desktop app with a REST API"*
+- *"A Next.js web app with Amplify"*
+- *"Just set up coding conventions for my existing project"*
 
-> "Create an Expo app with a Lambda backend and RevenueCat subscriptions"
+It then generates the right instruction file for your AI agent, scaffolds project management folders, and tells you what to do next.
 
-The agent reads the generated instruction file, follows the conventions, and knows the APIs — it will scaffold the project, configure start scripts, and set up everything.
+Open the project in your AI coding agent and start building. The agent reads the conventions, has reference docs for frameworks it knows, and searches online for everything else.
 
 **Claude Code users** can also invoke the skill directly:
 ```

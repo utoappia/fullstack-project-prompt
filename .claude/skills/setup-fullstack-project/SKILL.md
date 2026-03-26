@@ -18,66 +18,65 @@ You are setting up a fullstack project with curated coding conventions, permissi
 
 The skill directory containing all prompts and templates is at: `${CLAUDE_SKILL_DIR}`
 
-## Step 1: Detect project type
+## Step 1: Understand what the user wants to build
 
-Check if `package.json` exists in the current working directory.
+Ask the user a single open-ended question: **"What would you like to build?"**
 
-**If `package.json` exists:**
-- If `expo` appears in `dependencies` or `devDependencies` → detected platform is **Expo**
-- If `react-native` appears (without expo) → detected platform is **Bare React Native**
-- If `electron` appears in `dependencies` or `devDependencies` → detected platform is **Electron**
-- If `next` appears → detected as **Next.js** (can use Vercel backend prompts)
-- If none of these found → platform is **unknown** (could be a web app, Node.js project, etc.)
+Let the user describe their project in their own words. Examples:
+- "A mobile app with Expo and a Lambda backend"
+- "An Electron desktop app"
+- "A Next.js web app with Amplify"
+- "A React Native app with subscriptions and authentication"
+- "Just set up coding conventions for my existing project"
 
-**If `package.json` does NOT exist:**
-- This is likely an empty directory or a non-Node project. Platform is **unknown**.
-- Note this for later — some steps (log piping, package scripts) may not apply.
+If `$ARGUMENTS` were passed, treat them as the project description.
 
-Check if arguments were passed via `$ARGUMENTS`:
-- If `$1` is `expo`, `bare`, or `electron`, use that as the platform (skip asking)
-- If `--lambda` is in arguments, use Lambda as backend (skip asking)
-- If `--vercel` is in arguments, use Vercel as backend (skip asking)
-- If `--no-log-piping` is in arguments, skip log piping (don't ask)
+## Step 2: Detect and match
 
-## Step 2: Ask the user
+**Scan the project directory** — read `package.json` (if it exists), look at the folder structure, and understand what already exists.
 
-If any choice was not determined from arguments or detection, ask the user using AskUserQuestion. Ask all remaining questions in a single AskUserQuestion call.
+**Match the user's description** against the prompt files available in this skill. Identify which prompt sections are relevant:
 
-If the platform was auto-detected from package.json, tell the user what was detected (e.g., "Detected Expo project from package.json") and include the platform question with the detected value as the recommended option so they can confirm or override.
+| If the user mentions... | Include these prompts |
+|---|---|
+| Expo, React Native + Expo | `prompts/react-native/` (with expo.md) |
+| React Native (bare/CLI) | `prompts/react-native/` (with bare.md) |
+| Electron, desktop app | `prompts/electron/` |
+| AWS Lambda, Lambda backend | `prompts/backend/aws-lambda/` |
+| Vercel, serverless functions | `prompts/backend/vercel/` |
+| RevenueCat, subscriptions, in-app purchases | `prompts/revenuecat/` |
+| WorkOS, SSO, authentication, directory sync | `prompts/workos/` |
+| iOS, Apple, App Store | `prompts/apple-hig/` |
 
-Questions to ask (skip any that were determined from arguments):
+**Always include** `prompts/core/` — it covers behavior, code style, documentation, and code review that apply to any project.
 
-1. **Platform**: "Which platform is this project?"
-   - Options: Expo (Recommended) [if detected], Bare React Native, Electron (desktop), Other / None
-   - If not detected: Options: Expo, Bare React Native, Electron, Other / None
-   - If "Other / None" selected, skip platform-specific prompts but still offer backend, integrations, and Apple guidelines
+**If the user mentions frameworks or services NOT covered by this skill** (e.g., Amplify, Supabase, Firebase, Flutter, SvelteKit, Django, Rails), that's fine — include the core prompts and tell the agent to **search online for the latest documentation** for those technologies. The skill doesn't need to cover everything; it just needs to be helpful for what it does cover and adaptive for everything else.
 
-2. **Backend**: "Do you need a backend?"
-   - Options: AWS Lambda, Vercel, None
+**Don't force a specific architecture.** The user may want:
+- Separate backend + frontend directories
+- A monorepo with multiple apps
+- A single unified project (e.g., Next.js with API routes, or Amplify)
+- Just conventions for an existing codebase
 
-3. **Log piping**: "Add log piping scripts so Claude can read Metro/logcat output directly from files?"
-   - Options: Yes (Recommended), No
-
-4. **In-app purchases**: "Will this app use in-app purchases or subscriptions via RevenueCat?"
-   - Options: Yes, No
-
-5. **Authentication**: "Will this app need user authentication (login, SSO, organizations)?"
-   - Options: WorkOS AuthKit, None
+Adapt to whatever the user describes.
 
 ## Step 3: Generate CLAUDE.md
 
 Resolve `${CLAUDE_SKILL_DIR}` to its absolute path. Call this `SKILL_DIR`.
 
-Build the CLAUDE.md content with these lines:
+Build the CLAUDE.md content. Start with the user's project description and core conventions:
 
 ```
 # Project Instructions
+
+## What we're building
+{user's project description from Step 1}
 
 ## Core
 @SKILL_DIR/prompts/core/index.md
 ```
 
-The `## Core` section is always included regardless of platform — it covers behavior, code style, and documentation conventions that apply to any project.
+The `## Core` section is always included — it covers behavior, code style, documentation, and code review conventions that apply to any project.
 
 If Expo or Bare React Native platform, add the React Native section. The exact lines depend on selections:
 
@@ -154,7 +153,7 @@ Replace `SKILL_DIR` with the actual absolute path in all `@` lines.
 Read the following JSON files from `${CLAUDE_SKILL_DIR}/templates/settings/`:
 
 1. Always read: `base.json`
-2. If Expo: read `expo.json`. If Bare: read `bare.json`. If Electron: read `electron.json`.
+2. Read platform-specific files based on what was matched in Step 2: `expo.json`, `bare.json`, `electron.json`. If no match, skip platform-specific files.
 3. If Lambda: read `lambda.json`. If Vercel: read `vercel.json`.
 
 Each file has a `permissions.allow` array. Merge all arrays into one, removing duplicates.
@@ -176,47 +175,9 @@ The final structure should be:
 
 ## Step 5: Configure start scripts in package.json
 
-If `package.json` exists, ensure the project has convenient `npm run` scripts so every part of the stack can be started easily. Don't overwrite existing scripts.
+Skip this step during initial setup — the project may not exist yet. Instead, the coding agent should configure start scripts **when it actually creates or modifies the project** (as described in `behavior.md` under "Project bootstrapping").
 
-If `package.json` does not exist, skip this step.
-
-**Principles:**
-- Every runnable part of the project (frontend, backend, dev tools) should have a named script in the root `package.json`.
-- Use the `start:` prefix for starting services: `start:api`, `start:web`, `start:mobile`, `start:desktop`, etc.
-- Use the `dev:` prefix for development variants with hot-reload, log piping, or debug flags.
-- If the project has multiple frontends or services, add a `start:all` script using `concurrently` to launch them together.
-- Detect the frontend framework from `package.json` dependencies and configure the appropriate commands. Don't hardcode — read what's actually installed.
-
-**Backend (if scaffolded):**
-```json
-{
-  "start:api": "cd backend && npm run start:api",
-  "start:api:watch": "cd backend && npm run start:api:watch"
-}
-```
-
-**Frontend — detect and configure based on installed framework:**
-- Read `package.json` dependencies to determine the framework
-- Look at existing scripts — if `dev`, `start`, or framework-specific scripts already exist, reference those instead of duplicating
-- Add a `start:` prefixed alias that's easy to discover
-
-Examples of what the agent might add (depending on what's detected):
-- Expo project → `"start:mobile": "npx expo start"`
-- Bare React Native → `"start:mobile": "npx react-native start"`
-- Electron → `"start:desktop": "npx electron ."` or `"start:desktop": "npx electron-forge start"`
-- Next.js → `"start:web": "npx next dev"`
-- Vite → `"start:web": "npx vite"`
-- Any other framework → read its docs and configure accordingly
-
-**Log piping (if user chose log piping for React Native):**
-Add `dev:` variants that pipe output to files so the coding agent can read logs directly:
-```json
-{
-  "dev:ios": "<start command> 2>&1 | tee /tmp/rn-logs.txt",
-  "dev:android": "<start command> 2>&1 | tee /tmp/rn-logs.txt",
-  "dev:android:logs": "adb logcat *:E 2>&1 | tee /tmp/android-errors.txt"
-}
-```
+The key convention: every runnable part of the stack should have a `start:` prefixed script in the root `package.json` so the user can run `npm run start:<name>` to launch anything. The agent figures out the right commands based on what's actually installed.
 
 **Multiple services — use `concurrently`:**
 If the project has both a backend and a frontend, add:

@@ -171,62 +171,83 @@ async function main() {
 
   try {
     console.log('\n📦 fullstack-project-prompt setup\n');
-    console.log('This will generate instruction files for your AI coding agent');
-    console.log('and scaffold project management folders.\n');
 
     // Ensure package.json exists
     const pkgPath = join(cwd, 'package.json');
     if (!await exists(pkgPath)) {
-      console.log('No package.json found. Creating one...\n');
       const { execSync } = await import('node:child_process');
       execSync('npm init -y', { cwd, stdio: 'pipe' });
     }
 
-    // Detect platform
-    let detectedPlatform = null;
+    // Ask what the user wants to build
+    console.log('Describe what you want to build (1-2 sentences).');
+    console.log('Examples:');
+    console.log('  "A mobile app with Expo, Lambda backend, and subscriptions"');
+    console.log('  "An Electron desktop app with a REST API"');
+    console.log('  "A Next.js web app with Amplify"');
+    console.log('  "Just set up the coding conventions for my existing project"\n');
+    const description = await rl.question('What are you building? ');
+
+    // Detect which prompts are relevant from the description
+    const desc = description.toLowerCase();
+    const selections = {
+      platform: 'other',
+      backend: null,
+      revenuecat: false,
+      workos: false,
+    };
+
+    // Auto-detect from description
+    if (desc.match(/expo|react.native.*expo/)) selections.platform = 'expo';
+    else if (desc.match(/react.native|bare.rn/)) selections.platform = 'bare';
+    else if (desc.match(/electron|desktop/)) selections.platform = 'electron';
+
+    if (desc.match(/lambda|aws/)) selections.backend = 'lambda';
+    else if (desc.match(/vercel|serverless.func/)) selections.backend = 'vercel';
+
+    if (desc.match(/revenuecat|subscript|in.app.purchas|iap/)) selections.revenuecat = true;
+    if (desc.match(/workos|authkit|sso|directory.sync/)) selections.workos = true;
+
+    // Also detect from existing package.json
     const pkg = JSON.parse(await readFile(pkgPath, 'utf-8'));
     const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-    if (deps.expo) detectedPlatform = 'expo';
-    else if (deps['react-native']) detectedPlatform = 'bare';
-    else if (deps.electron) detectedPlatform = 'electron';
-    else if (deps.next) detectedPlatform = 'nextjs';
+    if (deps.expo && selections.platform === 'other') selections.platform = 'expo';
+    else if (deps['react-native'] && selections.platform === 'other') selections.platform = 'bare';
+    else if (deps.electron && selections.platform === 'other') selections.platform = 'electron';
 
-    if (detectedPlatform) console.log(`Detected: ${detectedPlatform} project\n`);
+    // Show what was detected and let user confirm
+    const matched = [];
+    if (selections.platform !== 'other') matched.push(`Platform: ${selections.platform}`);
+    if (selections.backend) matched.push(`Backend: ${selections.backend}`);
+    if (selections.revenuecat) matched.push('RevenueCat (in-app purchases)');
+    if (selections.workos) matched.push('WorkOS (authentication)');
 
-    // Ask questions
-    const platformIdx = await ask(rl, 'Which platform will you build?', [
-      `Expo (React Native)${detectedPlatform === 'expo' ? ' — detected' : ''}`,
-      `Bare React Native${detectedPlatform === 'bare' ? ' — detected' : ''}`,
-      `Electron (desktop)${detectedPlatform === 'electron' ? ' — detected' : ''}`,
-      'Other / Not sure yet',
-    ]);
-    const platform = ['expo', 'bare', 'electron', 'other'][platformIdx];
+    if (matched.length > 0) {
+      console.log('\nI\'ll include reference prompts for:');
+      matched.forEach(m => console.log(`  ✓ ${m}`));
+    }
+    console.log('\nCore conventions (code style, documentation, code review) are always included.');
+    console.log('Apple design guidelines are included for Apple platform projects.');
+    console.log('For anything else you mentioned, the agent will search online for docs.\n');
 
-    const backendIdx = await ask(rl, 'Backend?', ['AWS Lambda', 'Vercel', 'None / Later']);
-    const backend = ['lambda', 'vercel', null][backendIdx];
-
-    const rcIdx = await ask(rl, 'In-app purchases via RevenueCat?', ['Yes', 'No']);
-    const revenuecat = rcIdx === 0;
-
-    const workosIdx = await ask(rl, 'Authentication via WorkOS?', ['Yes', 'No']);
-    const workos = workosIdx === 0;
-
+    // Ask which agent
     let agentChoice = agentFlag;
     if (!agentChoice) {
       const agentIdx = await ask(rl, 'Which AI coding agent are you using?', [
-        'Cursor', 'Windsurf', 'GitHub Copilot', 'Claude Code', 'All of the above', 'None (just scaffold folders)',
+        'Cursor', 'Windsurf', 'GitHub Copilot', 'Claude Code', 'All of the above',
       ]);
-      agentChoice = ['cursor', 'windsurf', 'copilot', 'claude', 'all', 'none'][agentIdx];
+      agentChoice = ['cursor', 'windsurf', 'copilot', 'claude', 'all'][agentIdx];
     }
 
-    const selections = { platform, backend, revenuecat, workos };
     const conventions = await buildConventions(selections, PROMPTS_DIR);
+
+    // Prepend the user's project description so the agent knows what's being built
+    const header = `# Project Conventions\n\n## What we're building\n${description}\n\n`;
+    const fullConventions = header + conventions.replace('# Project Conventions\n\n', '');
 
     // Write agent instruction files
     const written = [];
-    const agentsToWrite = agentChoice === 'all'
-      ? Object.keys(AGENTS)
-      : agentChoice === 'none' ? [] : [agentChoice];
+    const agentsToWrite = agentChoice === 'all' ? Object.keys(AGENTS) : [agentChoice];
 
     for (const agent of agentsToWrite) {
       const filePath = join(cwd, AGENTS[agent]);
@@ -235,10 +256,10 @@ async function main() {
 
       if (await exists(filePath)) {
         const existing = await readFile(filePath, 'utf-8');
-        await writeFile(filePath, existing + '\n\n' + conventions, 'utf-8');
+        await writeFile(filePath, existing + '\n\n' + fullConventions, 'utf-8');
         written.push(`${AGENTS[agent]} (appended)`);
       } else {
-        await writeFile(filePath, conventions, 'utf-8');
+        await writeFile(filePath, fullConventions, 'utf-8');
         written.push(`${AGENTS[agent]} (created)`);
       }
     }
@@ -247,40 +268,18 @@ async function main() {
     await scaffoldFolders(cwd);
 
     // Summary
-    console.log('\n✅ Setup complete:\n');
+    console.log('✅ Setup complete:\n');
     for (const w of written) console.log(`  ${w}`);
     console.log('  Documentation/ .............. scaffolded');
     console.log('  references/MANIFEST.md ...... created');
     console.log('  code_review/ ................ created');
     console.log('  .gitignore .................. updated');
 
-    console.log('\n📋 What to do next:\n');
-    console.log('  1. Open this project in your AI coding agent');
-    console.log('     (it will read the generated instruction file automatically)\n');
-
-    if (!detectedPlatform && platform !== 'other') {
-      console.log('  2. Ask the agent to create your project. For example:');
-      if (platform === 'expo') console.log('     "Create a new Expo app in this directory"');
-      if (platform === 'bare') console.log('     "Create a new React Native app in this directory"');
-      if (platform === 'electron') console.log('     "Create a new Electron app in this directory"');
-      console.log('');
-      console.log('     The agent knows to use the framework\'s official CLI and will');
-      console.log('     configure start scripts, install dependencies, and update docs.\n');
-    }
-
-    if (backend) {
-      if (platform !== 'other' && !detectedPlatform) {
-        console.log('  3. After the project is created, ask the agent to set up the backend:');
-      } else {
-        console.log('  2. Ask the agent to set up the backend:');
-      }
-      if (backend === 'lambda') console.log('     "Set up an AWS Lambda backend"');
-      if (backend === 'vercel') console.log('     "Set up Vercel serverless functions"');
-      console.log('');
-    }
-
-    console.log('  The agent has access to conventions and API references for everything');
-    console.log('  you selected. Just tell it what to build!\n');
+    console.log('\n📋 Next step:\n');
+    console.log('  Open this project in your AI coding agent and tell it:');
+    console.log(`\n  "${description}"\n`);
+    console.log('  The agent will read the conventions file, use the reference prompts');
+    console.log('  for frameworks it knows, and search online for anything else.\n');
   } finally {
     rl.close();
   }
