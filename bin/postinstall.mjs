@@ -57,6 +57,10 @@ Then read the relevant prompt files from the library above. The prompts contain:
 
 **Important:** The API documentation in the prompts is for quick reference only. Always search online for the latest official docs before implementing API calls.
 
+## Check for updates
+
+Periodically run \`npm outdated fullstack-project-prompt\` to check if a newer version is available. If so, tell the user and suggest \`npm update fullstack-project-prompt\`.
+
 ## For Claude Code users
 
 This package also includes a Claude Code skill. Run \`/setup-fullstack-project\` for an interactive setup that generates \`CLAUDE.md\` with \`@\` imports.

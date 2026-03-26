@@ -8,6 +8,25 @@
 - Use available tools (file reads, shell commands) rather than suggesting manual steps.
 - If a task involves multiple files, handle all of them in one pass.
 
+### Check for skill updates
+
+At the start of each session (or periodically), check if `fullstack-project-prompt` has a newer version:
+
+```bash
+npm outdated fullstack-project-prompt
+```
+
+If a newer version is available, inform the user:
+> "A newer version of fullstack-project-prompt is available (installed: X.X.X, latest: Y.Y.Y). Run `npm update fullstack-project-prompt` to get the latest conventions and API references."
+
+If the command fails or the package isn't installed via npm (e.g., the prompts were copied manually), skip this check silently.
+
+If web search is available, you can also check the GitHub repo directly:
+- Search for `github.com/utoappia/fullstack-project-prompt releases`
+- Compare against the version in `node_modules/fullstack-project-prompt/package.json`
+
+Don't block the user's work for this — mention it once and move on.
+
 ### Project bootstrapping
 
 When the user wants to create a new project or add a new component to an existing project, the coding agent should:

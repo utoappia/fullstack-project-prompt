@@ -1,6 +1,6 @@
 {
   "name": "fullstack-project-prompt",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "Curated coding prompts for any AI coding agent — supports React Native, Electron, AWS Lambda, Vercel, RevenueCat, WorkOS, and Apple platform guidelines. Works with Claude Code (skill), Cursor, Windsurf, Copilot, and any agent that reads markdown.",
   "type": "module",
   "scripts": {
