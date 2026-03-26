@@ -22,7 +22,11 @@ The prompts include code examples, configuration snippets, comparison tables, er
 ## Install
 
 ```bash
+# Downloads the prompt library from GitHub into node_modules/
 npm install --save-dev github:utoappia/fullstack-project-prompt
+
+# Runs the setup wizard — asks what you're building, then generates
+# instruction files for your AI coding agent and scaffolds project folders
 npx fullstack-project-prompt
 ```
 
