@@ -42,75 +42,133 @@ async function ask(rl, question, options) {
   return idx >= 0 && idx < options.length ? idx : 0;
 }
 
-async function buildConventions(selections, promptsPath) {
-  const lines = ['# Project Conventions', '', '## How to use these prompts', '',
-    `The full prompt library is at: ${promptsPath}/`, '',
-    'Read the files listed below for project conventions. Each file contains patterns,',
-    'code examples, and rules that should be followed when working on this project.', '',
-    '**Important:** The API documentation in these prompts is for quick reference only.',
-    'Always search online for the latest official docs before implementing API calls.', ''];
+async function readPromptFile(filePath) {
+  try {
+    return await readFile(filePath, 'utf-8');
+  } catch {
+    return '';
+  }
+}
 
-  lines.push('## Core (always read)', '');
-  lines.push(`- ${promptsPath}/core/behavior.md`);
-  lines.push(`- ${promptsPath}/core/code-style.md`);
-  lines.push(`- ${promptsPath}/core/documentation.md`);
-  lines.push('');
+async function buildConventions(selections, promptsPath, agent) {
+  // For Claude Code, use @ imports (it loads referenced files into context)
+  // For other agents, inline the actual file contents
+  const useImports = (agent === 'claude');
 
+  const sections = [];
+
+  sections.push('# Project Conventions');
+  sections.push('');
+  sections.push('**API documentation in these prompts is for quick reference only.**');
+  sections.push('Always search online for the latest official docs before implementing API calls.');
+  sections.push('');
+
+  // Helper: add a section either as @ import or inlined content
+  async function addSection(heading, files) {
+    sections.push(`## ${heading}`, '');
+    for (const file of files) {
+      if (useImports) {
+        sections.push(`@${file}`);
+      } else {
+        const content = await readPromptFile(file);
+        if (content) {
+          sections.push(content);
+          sections.push('');
+        }
+      }
+    }
+    sections.push('');
+  }
+
+  // Core — always included
+  await addSection('Core', [
+    join(promptsPath, 'core', 'behavior.md'),
+    join(promptsPath, 'core', 'code-style.md'),
+    join(promptsPath, 'core', 'documentation.md'),
+  ]);
+
+  // Platform-specific
   if (selections.platform === 'expo' || selections.platform === 'bare') {
-    lines.push('## React Native', '');
-    lines.push(`- ${promptsPath}/react-native/shared.md`);
-    if (selections.platform === 'expo') lines.push(`- ${promptsPath}/react-native/expo.md`);
-    if (selections.platform === 'bare') lines.push(`- ${promptsPath}/react-native/bare.md`);
-    lines.push(`- ${promptsPath}/react-native/navigation.md`);
-    lines.push(`- ${promptsPath}/react-native/ios-permissions.md`);
-    lines.push(`- ${promptsPath}/react-native/android-icons.md`);
-    lines.push(`- ${promptsPath}/react-native/simulator-control.md`);
-    lines.push('');
+    const files = [join(promptsPath, 'react-native', 'shared.md')];
+    if (selections.platform === 'expo') files.push(join(promptsPath, 'react-native', 'expo.md'));
+    if (selections.platform === 'bare') files.push(join(promptsPath, 'react-native', 'bare.md'));
+    files.push(
+      join(promptsPath, 'react-native', 'navigation.md'),
+      join(promptsPath, 'react-native', 'ios-permissions.md'),
+      join(promptsPath, 'react-native', 'android-icons.md'),
+      join(promptsPath, 'react-native', 'simulator-control.md'),
+    );
+    await addSection('React Native', files);
   }
 
   if (selections.platform === 'electron') {
-    lines.push('## Electron', '');
-    lines.push(`- ${promptsPath}/electron/process-model-ipc.md`);
-    lines.push(`- ${promptsPath}/electron/security.md`);
-    lines.push(`- ${promptsPath}/electron/ui-features.md`);
-    lines.push(`- ${promptsPath}/electron/performance-native.md`);
-    lines.push(`- ${promptsPath}/electron/distribution.md`);
-    lines.push(`- ${promptsPath}/electron/api-reference.md`);
-    lines.push('');
+    await addSection('Electron', [
+      join(promptsPath, 'electron', 'process-model-ipc.md'),
+      join(promptsPath, 'electron', 'security.md'),
+      join(promptsPath, 'electron', 'ui-features.md'),
+      join(promptsPath, 'electron', 'performance-native.md'),
+      join(promptsPath, 'electron', 'distribution.md'),
+      join(promptsPath, 'electron', 'api-reference.md'),
+    ]);
   }
 
+  // Backend
   if (selections.backend === 'lambda') {
-    lines.push('## Backend (AWS Lambda)', '');
-    lines.push(`- ${promptsPath}/backend/aws-lambda/index.md (references 15 sub-files)`);
-    lines.push('');
-  }
-  if (selections.backend === 'vercel') {
-    lines.push('## Backend (Vercel)', '');
-    lines.push(`- ${promptsPath}/backend/vercel/index.md (references 6 sub-files)`);
-    lines.push('');
+    // Lambda has 15 files — for non-Claude agents, read each via index
+    if (useImports) {
+      await addSection('Backend (AWS Lambda)', [join(promptsPath, 'backend', 'aws-lambda', 'index.md')]);
+    } else {
+      const indexContent = await readPromptFile(join(promptsPath, 'backend', 'aws-lambda', 'index.md'));
+      const subFiles = indexContent.split('\n').filter(l => l.startsWith('@')).map(l => join(promptsPath, 'backend', 'aws-lambda', l.replace('@', '').trim()));
+      await addSection('Backend (AWS Lambda)', subFiles);
+    }
   }
 
+  if (selections.backend === 'vercel') {
+    if (useImports) {
+      await addSection('Backend (Vercel)', [join(promptsPath, 'backend', 'vercel', 'index.md')]);
+    } else {
+      const indexContent = await readPromptFile(join(promptsPath, 'backend', 'vercel', 'index.md'));
+      const subFiles = indexContent.split('\n').filter(l => l.startsWith('@')).map(l => join(promptsPath, 'backend', 'vercel', l.replace('@', '').trim()));
+      await addSection('Backend (Vercel)', subFiles);
+    }
+  }
+
+  // Integrations
   if (selections.revenuecat) {
-    lines.push('## In-App Purchases (RevenueCat)', '');
-    lines.push(`- ${promptsPath}/revenuecat/index.md (references 6 sub-files)`);
-    lines.push('');
+    if (useImports) {
+      await addSection('In-App Purchases (RevenueCat)', [join(promptsPath, 'revenuecat', 'index.md')]);
+    } else {
+      const indexContent = await readPromptFile(join(promptsPath, 'revenuecat', 'index.md'));
+      const subFiles = indexContent.split('\n').filter(l => l.startsWith('@')).map(l => join(promptsPath, 'revenuecat', l.replace('@', '').trim()));
+      await addSection('In-App Purchases (RevenueCat)', subFiles);
+    }
   }
 
   if (selections.workos) {
-    lines.push('## Authentication (WorkOS)', '');
-    lines.push(`- ${promptsPath}/workos/index.md (references 4 sub-files)`);
-    lines.push('');
+    if (useImports) {
+      await addSection('Authentication (WorkOS)', [join(promptsPath, 'workos', 'index.md')]);
+    } else {
+      const indexContent = await readPromptFile(join(promptsPath, 'workos', 'index.md'));
+      const subFiles = indexContent.split('\n').filter(l => l.startsWith('@')).map(l => join(promptsPath, 'workos', l.replace('@', '').trim()));
+      await addSection('Authentication (WorkOS)', subFiles);
+    }
   }
 
+  // Apple HIG
   if (['expo', 'bare', 'electron'].includes(selections.platform)) {
-    lines.push('## Apple Design & Review Guidelines', '');
-    lines.push(`- ${promptsPath}/apple-hig/index.md (references 5 sub-files)`);
-    lines.push('');
+    if (useImports) {
+      await addSection('Apple Design & Review Guidelines', [join(promptsPath, 'apple-hig', 'index.md')]);
+    } else {
+      const indexContent = await readPromptFile(join(promptsPath, 'apple-hig', 'index.md'));
+      const subFiles = indexContent.split('\n').filter(l => l.startsWith('@')).map(l => join(promptsPath, 'apple-hig', l.replace('@', '').trim()));
+      await addSection('Apple Design & Review Guidelines', subFiles);
+    }
   }
 
-  lines.push('## Project-Specific Notes', '', '<!-- Add your project-specific instructions below -->', '');
+  sections.push('## Project-Specific Notes', '', '<!-- Add your project-specific instructions below -->', '');
 
-  return lines.join('\n');
+  return sections.join('\n');
 }
 
 async function scaffoldFolders(cwd) {
@@ -239,17 +297,16 @@ async function main() {
       agentChoice = ['cursor', 'windsurf', 'copilot', 'claude', 'all'][agentIdx];
     }
 
-    const conventions = await buildConventions(selections, PROMPTS_DIR);
-
-    // Prepend the user's project description so the agent knows what's being built
-    const header = `# Project Conventions\n\n## What we're building\n${description}\n\n`;
-    const fullConventions = header + conventions.replace('# Project Conventions\n\n', '');
-
     // Write agent instruction files
     const written = [];
     const agentsToWrite = agentChoice === 'all' ? Object.keys(AGENTS) : [agentChoice];
 
     for (const agent of agentsToWrite) {
+      // Build conventions with agent-appropriate format
+      const conventions = await buildConventions(selections, PROMPTS_DIR, agent);
+      const header = `# Project Conventions\n\n## What we're building\n${description}\n\n`;
+      const fullConventions = header + conventions.replace('# Project Conventions\n\n', '');
+
       const filePath = join(cwd, AGENTS[agent]);
       const dir = dirname(filePath);
       if (dir !== cwd) await mkdir(dir, { recursive: true });
