@@ -22,30 +22,18 @@ The prompts include code examples, configuration snippets, comparison tables, er
 ## Install
 
 ```bash
-# Downloads the prompt library from GitHub into node_modules/
 npm install --save-dev github:utoappia/fullstack-project-prompt
-
-# Runs the setup wizard — asks what you're building, then generates
-# instruction files for your AI coding agent and scaffolds project folders
-npx fullstack-project-prompt
 ```
 
-The setup asks one question: **"What are you building?"**
+This downloads the prompt library and automatically creates `AGENTS.md` in your project root.
 
-Describe your project in plain language:
-- *"A mobile app with Expo, Lambda backend, and subscriptions"*
-- *"An Electron desktop app with a REST API"*
-- *"A Next.js web app with Amplify"*
-- *"Just set up coding conventions for my existing project"*
+**Then just open the project in your AI coding agent and start chatting.** Tell the agent what you want to build — it will read `AGENTS.md`, discover the prompt library, and have a conversation with you to understand your project before doing anything.
 
-It then generates the right instruction file for your AI agent, scaffolds project management folders, and tells you what to do next.
+The agent uses the reference prompts for frameworks it knows (React Native, Electron, Lambda, Vercel, RevenueCat, WorkOS, Apple HIG) and searches online for everything else.
 
-Open the project in your AI coding agent and start building. The agent reads the conventions, has reference docs for frameworks it knows, and searches online for everything else.
-
-**Claude Code users** can also invoke the skill directly after installing:
-```
-/setup-fullstack-project
-```
+**Optional extras:**
+- Run `npx fullstack-project-prompt` for a CLI wizard that scaffolds Documentation folders and generates agent-specific instruction files (`.cursorrules`, `.windsurfrules`, etc.)
+- Claude Code users can run `/setup-fullstack-project` for an interactive skill-based setup with `@` imports
 
 ## What gets generated
 

@@ -18,26 +18,34 @@ You are setting up a fullstack project with curated coding conventions, permissi
 
 The skill directory containing all prompts and templates is at: `${CLAUDE_SKILL_DIR}`
 
-## Step 1: Understand what the user wants to build
+## Step 1: Have a conversation with the user
 
-Ask the user a single open-ended question: **"What would you like to build?"**
+Don't just ask one question and proceed. Have a **conversation** to understand what the user wants:
 
-Let the user describe their project in their own words. Examples:
-- "A mobile app with Expo and a Lambda backend"
-- "An Electron desktop app"
-- "A Next.js web app with Amplify"
-- "A React Native app with subscriptions and authentication"
-- "Just set up coding conventions for my existing project"
+1. **Ask what they want to build** — let them describe in their own words.
+2. **Ask follow-up questions** based on their answer — clarify the tech stack, architecture, target platforms, key features, and any services/integrations they need.
+3. **Scan the project directory** — read `package.json` (if it exists), look at the folder structure, and understand what already exists. Share what you found with the user.
+4. **Suggest an approach** — based on what you've learned, propose a tech stack and architecture. Ask the user if they agree or want to adjust.
+5. **Only proceed to setup once the user confirms** they're happy with the plan.
 
-If `$ARGUMENTS` were passed, treat them as the project description.
+Example conversation:
+> **Agent:** What would you like to build?
+> **User:** A mobile app with a backend
+> **Agent:** Great! A few questions:
+> - What kind of mobile app? (iOS, Android, or both?)
+> - Do you have a preference for the mobile framework? (Expo/React Native, Flutter, etc.)
+> - What does the backend need to do? (API, database, auth, payments?)
+> - Will this be deployed to any specific cloud provider?
+> **User:** Both iOS and Android, using Expo. Backend needs auth and a database. Not sure about the cloud provider.
+> **Agent:** I'd suggest: Expo for the mobile app, AWS Lambda for the backend (lightweight, pay-per-use), WorkOS for authentication (handles SSO and user management), and PostgreSQL via Drizzle ORM for the database. I have detailed reference prompts for all of these. Sound good?
+> **User:** Yes, let's go with that.
+> **Agent:** (proceeds with setup)
 
-## Step 2: Detect and match
+## Step 2: Identify relevant prompts
 
-**Scan the project directory** — read `package.json` (if it exists), look at the folder structure, and understand what already exists.
+Based on the conversation, identify which prompt sections from this skill are relevant:
 
-**Match the user's description** against the prompt files available in this skill. Identify which prompt sections are relevant:
-
-| If the user mentions... | Include these prompts |
+| If the project uses... | Include these prompts |
 |---|---|
 | Expo, React Native + Expo | `prompts/react-native/` (with expo.md) |
 | React Native (bare/CLI) | `prompts/react-native/` (with bare.md) |
@@ -50,7 +58,7 @@ If `$ARGUMENTS` were passed, treat them as the project description.
 
 **Always include** `prompts/core/` — it covers behavior, code style, documentation, and code review that apply to any project.
 
-**If the user mentions frameworks or services NOT covered by this skill** (e.g., Amplify, Supabase, Firebase, Flutter, SvelteKit, Django, Rails), that's fine — include the core prompts and tell the agent to **search online for the latest documentation** for those technologies. The skill doesn't need to cover everything; it just needs to be helpful for what it does cover and adaptive for everything else.
+**If the project uses frameworks or services NOT covered by this skill** (e.g., Amplify, Supabase, Firebase, Flutter, SvelteKit, Django, Rails), that's fine — include the core prompts and **search online for the latest documentation** for those technologies. The skill doesn't need to cover everything; it just needs to be helpful for what it does cover and adaptive for everything else.
 
 **Don't force a specific architecture.** The user may want:
 - Separate backend + frontend directories
@@ -58,7 +66,7 @@ If `$ARGUMENTS` were passed, treat them as the project description.
 - A single unified project (e.g., Next.js with API routes, or Amplify)
 - Just conventions for an existing codebase
 
-Adapt to whatever the user describes.
+Adapt to whatever the user described in the conversation.
 
 ## Step 3: Generate CLAUDE.md
 

@@ -88,10 +88,10 @@ async function buildConventions(selections, promptsPath, agent) {
   ]);
 
   // Platform-specific
-  if (selections.platform === 'expo' || selections.platform === 'bare') {
+  if (['expo', 'bare', 'all'].includes(selections.platform)) {
     const files = [join(promptsPath, 'react-native', 'shared.md')];
-    if (selections.platform === 'expo') files.push(join(promptsPath, 'react-native', 'expo.md'));
-    if (selections.platform === 'bare') files.push(join(promptsPath, 'react-native', 'bare.md'));
+    if (selections.platform !== 'bare') files.push(join(promptsPath, 'react-native', 'expo.md'));
+    if (selections.platform !== 'expo') files.push(join(promptsPath, 'react-native', 'bare.md'));
     files.push(
       join(promptsPath, 'react-native', 'navigation.md'),
       join(promptsPath, 'react-native', 'ios-permissions.md'),
@@ -101,7 +101,7 @@ async function buildConventions(selections, promptsPath, agent) {
     await addSection('React Native', files);
   }
 
-  if (selections.platform === 'electron') {
+  if (['electron', 'all'].includes(selections.platform)) {
     await addSection('Electron', [
       join(promptsPath, 'electron', 'process-model-ipc.md'),
       join(promptsPath, 'electron', 'security.md'),
@@ -113,7 +113,7 @@ async function buildConventions(selections, promptsPath, agent) {
   }
 
   // Backend
-  if (selections.backend === 'lambda') {
+  if (selections.backend === 'lambda' || selections.backend === 'all') {
     // Lambda has 15 files — for non-Claude agents, read each via index
     if (useImports) {
       await addSection('Backend (AWS Lambda)', [join(promptsPath, 'backend', 'aws-lambda', 'index.md')]);
@@ -124,7 +124,7 @@ async function buildConventions(selections, promptsPath, agent) {
     }
   }
 
-  if (selections.backend === 'vercel') {
+  if (selections.backend === 'vercel' || selections.backend === 'all') {
     if (useImports) {
       await addSection('Backend (Vercel)', [join(promptsPath, 'backend', 'vercel', 'index.md')]);
     } else {
@@ -156,7 +156,7 @@ async function buildConventions(selections, promptsPath, agent) {
   }
 
   // Apple HIG
-  if (['expo', 'bare', 'electron'].includes(selections.platform)) {
+  if (['expo', 'bare', 'electron', 'all'].includes(selections.platform)) {
     if (useImports) {
       await addSection('Apple Design & Review Guidelines', [join(promptsPath, 'apple-hig', 'index.md')]);
     } else {
@@ -232,75 +232,49 @@ async function main() {
 
     const pkgPath = join(cwd, 'package.json');
 
-    // Ask what the user wants to build
-    console.log('Describe what you want to build (1-2 sentences).');
-    console.log('Examples:');
-    console.log('  "A mobile app with Expo, Lambda backend, and subscriptions"');
-    console.log('  "An Electron desktop app with a REST API"');
-    console.log('  "A Next.js web app with Amplify"');
-    console.log('  "Just set up the coding conventions for my existing project"\n');
-    const description = await rl.question('What are you building? ');
-
-    // Detect which prompts are relevant from the description
-    const desc = description.toLowerCase();
-    const selections = {
-      platform: 'other',
-      backend: null,
-      revenuecat: false,
-      workos: false,
-    };
-
-    // Auto-detect from description
-    if (desc.match(/expo|react.native.*expo/)) selections.platform = 'expo';
-    else if (desc.match(/react.native|bare.rn/)) selections.platform = 'bare';
-    else if (desc.match(/electron|desktop/)) selections.platform = 'electron';
-
-    if (desc.match(/lambda|aws/)) selections.backend = 'lambda';
-    else if (desc.match(/vercel|serverless.func/)) selections.backend = 'vercel';
-
-    if (desc.match(/revenuecat|subscript|in.app.purchas|iap/)) selections.revenuecat = true;
-    if (desc.match(/workos|authkit|sso|directory.sync/)) selections.workos = true;
-
-    // Also detect from existing package.json
-    const pkg = JSON.parse(await readFile(pkgPath, 'utf-8'));
-    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-    if (deps.expo && selections.platform === 'other') selections.platform = 'expo';
-    else if (deps['react-native'] && selections.platform === 'other') selections.platform = 'bare';
-    else if (deps.electron && selections.platform === 'other') selections.platform = 'electron';
-
-    // Show what was detected and let user confirm
-    const matched = [];
-    if (selections.platform !== 'other') matched.push(`Platform: ${selections.platform}`);
-    if (selections.backend) matched.push(`Backend: ${selections.backend}`);
-    if (selections.revenuecat) matched.push('RevenueCat (in-app purchases)');
-    if (selections.workos) matched.push('WorkOS (authentication)');
-
-    if (matched.length > 0) {
-      console.log('\nI\'ll include reference prompts for:');
-      matched.forEach(m => console.log(`  ✓ ${m}`));
+    // Detect what's already in the project
+    let detected = [];
+    if (await exists(pkgPath)) {
+      const pkg = JSON.parse(await readFile(pkgPath, 'utf-8'));
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+      if (deps.expo) detected.push('Expo');
+      if (deps['react-native'] && !deps.expo) detected.push('React Native (bare)');
+      if (deps.electron) detected.push('Electron');
+      if (deps.next) detected.push('Next.js');
+      if (deps['react-native-purchases']) detected.push('RevenueCat');
+      if (deps['@workos-inc/node']) detected.push('WorkOS');
+      if (deps['aws-sdk'] || deps['@aws-sdk/client-lambda']) detected.push('AWS');
     }
-    console.log('\nCore conventions (code style, documentation, code review) are always included.');
-    console.log('Apple design guidelines are included for Apple platform projects.');
-    console.log('For anything else you mentioned, the agent will search online for docs.\n');
 
-    // Ask which agent
+    if (detected.length > 0) {
+      console.log(`Detected in this project: ${detected.join(', ')}\n`);
+    }
+
+    // Ask which agent — this is the only question the CLI needs to ask
     let agentChoice = agentFlag;
     if (!agentChoice) {
-      const agentIdx = await ask(rl, 'Which AI coding agent are you using?', [
+      const agentIdx = await ask(rl, 'Which AI coding agent will you use?', [
         'Cursor', 'Windsurf', 'GitHub Copilot', 'Claude Code', 'All of the above',
       ]);
       agentChoice = ['cursor', 'windsurf', 'copilot', 'claude', 'all'][agentIdx];
     }
+
+    // Include ALL prompts — the agent will use what's relevant
+    // This is deliberate: the agent is better at deciding what's relevant
+    // than a regex matching a user's one-sentence description
+    const selections = {
+      platform: 'all',
+      backend: 'all',
+      revenuecat: true,
+      workos: true,
+    };
 
     // Write agent instruction files
     const written = [];
     const agentsToWrite = agentChoice === 'all' ? Object.keys(AGENTS) : [agentChoice];
 
     for (const agent of agentsToWrite) {
-      // Build conventions with agent-appropriate format
       const conventions = await buildConventions(selections, PROMPTS_DIR, agent);
-      const header = `# Project Conventions\n\n## What we're building\n${description}\n\n`;
-      const fullConventions = header + conventions.replace('# Project Conventions\n\n', '');
 
       const filePath = join(cwd, AGENTS[agent]);
       const dir = dirname(filePath);
@@ -308,10 +282,10 @@ async function main() {
 
       if (await exists(filePath)) {
         const existing = await readFile(filePath, 'utf-8');
-        await writeFile(filePath, existing + '\n\n' + fullConventions, 'utf-8');
+        await writeFile(filePath, existing + '\n\n' + conventions, 'utf-8');
         written.push(`${AGENTS[agent]} (appended)`);
       } else {
-        await writeFile(filePath, fullConventions, 'utf-8');
+        await writeFile(filePath, conventions, 'utf-8');
         written.push(`${AGENTS[agent]} (created)`);
       }
     }
@@ -320,7 +294,7 @@ async function main() {
     await scaffoldFolders(cwd);
 
     // Summary
-    console.log('✅ Setup complete:\n');
+    console.log('\n✅ Setup complete:\n');
     for (const w of written) console.log(`  ${w}`);
     console.log('  Documentation/ .............. scaffolded');
     console.log('  references/MANIFEST.md ...... created');
@@ -328,10 +302,12 @@ async function main() {
     console.log('  .gitignore .................. updated');
 
     console.log('\n📋 Next step:\n');
-    console.log('  Open this project in your AI coding agent and tell it:');
-    console.log(`\n  "${description}"\n`);
-    console.log('  The agent will read the conventions file, use the reference prompts');
-    console.log('  for frameworks it knows, and search online for anything else.\n');
+    console.log('  Open this project in your AI coding agent and tell it what');
+    console.log('  you want to build. The agent will have a conversation with');
+    console.log('  you to understand your project before proceeding.\n');
+    console.log('  The agent has reference prompts for: React Native, Electron,');
+    console.log('  AWS Lambda, Vercel, RevenueCat, WorkOS, Apple HIG, and more.');
+    console.log('  It will use what\'s relevant and search online for anything else.\n');
   } finally {
     rl.close();
   }
