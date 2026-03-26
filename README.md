@@ -21,9 +21,19 @@ The prompts include code examples, configuration snippets, comparison tables, er
 
 ## Install
 
+### New project (empty folder)
+
 ```bash
 mkdir my-project && cd my-project
 npm init -y
+npm install --save-dev github:utoappia/fullstack-project-prompt
+npx fullstack-project-prompt
+```
+
+### Existing project
+
+```bash
+cd my-project
 npm install --save-dev github:utoappia/fullstack-project-prompt
 npx fullstack-project-prompt
 ```
@@ -40,7 +50,7 @@ It then generates the right instruction file for your AI agent, scaffolds projec
 
 Open the project in your AI coding agent and start building. The agent reads the conventions, has reference docs for frameworks it knows, and searches online for everything else.
 
-**Claude Code users** can also invoke the skill directly:
+**Claude Code users** can also invoke the skill directly after installing:
 ```
 /setup-fullstack-project
 ```
