@@ -174,13 +174,20 @@ The final structure should be:
 - If `.claude/settings.json` already exists, read it. Merge your `permissions.allow` entries into the existing array (preserve what's already there, add new entries, deduplicate).
 - If it does not exist, create `.claude/` directory and write the file.
 
-## Step 5: Add convenience scripts to root package.json
+## Step 5: Configure start scripts in package.json
 
-If `package.json` exists, add scripts to start all parts of the stack easily. Don't overwrite existing scripts with the same name.
+If `package.json` exists, ensure the project has convenient `npm run` scripts so every part of the stack can be started easily. Don't overwrite existing scripts.
 
-If `package.json` does not exist, skip this step and note in the summary.
+If `package.json` does not exist, skip this step.
 
-**Always add (if backend was selected):**
+**Principles:**
+- Every runnable part of the project (frontend, backend, dev tools) should have a named script in the root `package.json`.
+- Use the `start:` prefix for starting services: `start:api`, `start:web`, `start:mobile`, `start:desktop`, etc.
+- Use the `dev:` prefix for development variants with hot-reload, log piping, or debug flags.
+- If the project has multiple frontends or services, add a `start:all` script using `concurrently` to launch them together.
+- Detect the frontend framework from `package.json` dependencies and configure the appropriate commands. Don't hardcode — read what's actually installed.
+
+**Backend (if scaffolded):**
 ```json
 {
   "start:api": "cd backend && npm run start:api",
@@ -188,61 +195,38 @@ If `package.json` does not exist, skip this step and note in the summary.
 }
 ```
 
-**If Expo:**
+**Frontend — detect and configure based on installed framework:**
+- Read `package.json` dependencies to determine the framework
+- Look at existing scripts — if `dev`, `start`, or framework-specific scripts already exist, reference those instead of duplicating
+- Add a `start:` prefixed alias that's easy to discover
+
+Examples of what the agent might add (depending on what's detected):
+- Expo project → `"start:mobile": "npx expo start"`
+- Bare React Native → `"start:mobile": "npx react-native start"`
+- Electron → `"start:desktop": "npx electron ."` or `"start:desktop": "npx electron-forge start"`
+- Next.js → `"start:web": "npx next dev"`
+- Vite → `"start:web": "npx vite"`
+- Any other framework → read its docs and configure accordingly
+
+**Log piping (if user chose log piping for React Native):**
+Add `dev:` variants that pipe output to files so the coding agent can read logs directly:
 ```json
 {
-  "start:expo": "npx expo start",
-  "start:expo:ios": "npx expo start --ios",
-  "start:expo:android": "npx expo start --android",
-  "start:expo:web": "npx expo start --web",
-  "dev:ios": "npx expo start --ios 2>&1 | tee /tmp/rn-logs.txt",
-  "dev:android": "npx expo start --android 2>&1 | tee /tmp/rn-logs.txt",
+  "dev:ios": "<start command> 2>&1 | tee /tmp/rn-logs.txt",
+  "dev:android": "<start command> 2>&1 | tee /tmp/rn-logs.txt",
   "dev:android:logs": "adb logcat *:E 2>&1 | tee /tmp/android-errors.txt"
 }
 ```
 
-**If Bare React Native:**
+**Multiple services — use `concurrently`:**
+If the project has both a backend and a frontend, add:
 ```json
 {
-  "start:rn": "npx react-native start",
-  "start:rn:ios": "npx react-native run-ios",
-  "start:rn:android": "npx react-native run-android",
-  "dev:ios": "npx react-native start 2>&1 | tee /tmp/rn-logs.txt",
-  "dev:android": "npx react-native start 2>&1 | tee /tmp/rn-logs.txt",
-  "dev:android:logs": "adb logcat *:E 2>&1 | tee /tmp/android-errors.txt"
+  "start:all": "npx concurrently \"npm run start:api\" \"npm run start:<frontend>\""
 }
 ```
 
-**If Electron:**
-```json
-{
-  "start:electron": "npx electron .",
-  "start:electron:dev": "npx electron . --inspect"
-}
-```
-
-If the project has Electron Forge configured, use instead:
-```json
-{
-  "start:electron": "npx electron-forge start",
-  "start:electron:dev": "npx electron-forge start -- --inspect"
-}
-```
-
-**If multiple frontends exist (e.g., Expo + Electron in the same repo):**
-
-Add a combined `start:all` script that runs the API server and the selected frontend concurrently. If `concurrently` is not installed, suggest installing it:
-
-```json
-{
-  "start:all": "npx concurrently \"npm run start:api\" \"npm run start:expo\"",
-  "start:all:electron": "npx concurrently \"npm run start:api\" \"npm run start:electron\""
-}
-```
-
-Tell the user they can customize which frontend `start:all` runs.
-
-**Log piping scripts** (`dev:ios`, `dev:android`, `dev:android:logs`) pipe Metro/logcat output to `/tmp/rn-logs.txt` and `/tmp/android-errors.txt` so the coding agent can read logs directly from files. Only add these if the user chose log piping.
+The agent should always check what's actually in the project before adding scripts — never add scripts for frameworks that aren't installed.
 
 ## Step 6: Scaffold backend (if selected)
 
@@ -374,13 +358,7 @@ Setup complete:
   references/MANIFEST.md ...... created (references folder gitignored)
   code_review/ ................ created (gitignored, for review reports)
 
-Available commands:
-  npm run start:api          Start backend server (localhost:3001)
-  npm run start:api:watch    Start backend with hot-reload
-  npm run start:expo         Start Expo dev server
-  npm run start:expo:ios     Start Expo on iOS simulator
-  npm run start:electron     Start Electron app
-  npm run start:all          Start backend + frontend concurrently
+Run `npm run` to see all available scripts (start:api, start:<frontend>, start:all, etc.)
 
 Next steps:
   - Review CLAUDE.md and add project-specific notes at the bottom
