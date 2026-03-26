@@ -22,10 +22,6 @@ async function main() {
   // Find the project root (where npm install was run)
   // In postinstall, process.env.INIT_CWD is the directory where npm install was invoked
   const projectRoot = process.env.INIT_CWD || process.cwd();
-  const agentsPath = join(projectRoot, 'AGENTS.md');
-
-  // Don't overwrite if already exists
-  if (await exists(agentsPath)) return;
 
   const content = `# AI Agent Instructions
 
@@ -66,7 +62,30 @@ Periodically run \`npm outdated fullstack-project-prompt\` to check if a newer v
 This package also includes a Claude Code skill. Run \`/setup-fullstack-project\` for an interactive setup that generates \`CLAUDE.md\` with \`@\` imports.
 `;
 
-  await writeFile(agentsPath, content, 'utf-8');
+  // Create instruction files for all major agents (don't overwrite existing)
+  const files = {
+    'AGENTS.md': content,                               // Codex, generic agents
+    'CLAUDE.md': content,                               // Claude Code
+    '.cursorrules': content,                            // Cursor
+    '.windsurfrules': content,                          // Windsurf
+    'CONVENTIONS.md': content,                          // Universal fallback
+  };
+
+  // Also create .github/copilot-instructions.md for GitHub Copilot
+  const copilotDir = join(projectRoot, '.github');
+  const copilotPath = join(copilotDir, 'copilot-instructions.md');
+
+  for (const [filename, fileContent] of Object.entries(files)) {
+    const filePath = join(projectRoot, filename);
+    if (!await exists(filePath)) {
+      await writeFile(filePath, fileContent, 'utf-8');
+    }
+  }
+
+  if (!await exists(copilotPath)) {
+    await mkdir(copilotDir, { recursive: true });
+    await writeFile(copilotPath, content, 'utf-8');
+  }
 }
 
 main().catch(() => {});  // Silently fail — postinstall errors shouldn't block npm install
